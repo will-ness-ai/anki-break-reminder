@@ -3,8 +3,9 @@ from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTimer, Qt, QFont, QSpinBox, QCheckBox, QListWidget,
     QLineEdit, QGroupBox, QFormLayout, QDialogButtonBox,
-    QListWidgetItem, QInputDialog, QSlider
+    QListWidgetItem, QInputDialog, QSlider, QFileDialog, QPixmap
 )
+import os
 from .activities import get_random_activity
 from .sounds import play_break_start, play_break_end, play_test_sound, has_volume_control
 
@@ -36,6 +37,23 @@ class BreakDialog(QDialog):
         title.setFont(title_font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
+
+        # Custom image
+        config = self._get_config()
+        img_path = config.get("break_image_path", "")
+        if img_path and os.path.isfile(img_path):
+            pixmap = QPixmap(img_path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(
+                    250, 200,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                img_label = QLabel()
+                img_label.setPixmap(scaled)
+                img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                layout.addWidget(img_label)
+                layout.addSpacing(10)
 
         # Activity
         layout.addSpacing(10)
@@ -203,6 +221,33 @@ class SettingsDialog(QDialog):
         sound_group.setLayout(sound_layout)
         layout.addWidget(sound_group)
 
+        # Image settings
+        image_group = QGroupBox("Break Image")
+        image_layout = QVBoxLayout()
+
+        self._image_path = ""
+        path_row = QHBoxLayout()
+        self._image_path_label = QLabel("No image selected")
+        self._image_path_label.setStyleSheet("color: gray; font-style: italic;")
+        path_row.addWidget(self._image_path_label, 1)
+
+        browse_btn = QPushButton("Browse...")
+        browse_btn.clicked.connect(self._browse_image)
+        path_row.addWidget(browse_btn)
+
+        clear_btn = QPushButton("Clear")
+        clear_btn.clicked.connect(self._clear_image)
+        path_row.addWidget(clear_btn)
+        image_layout.addLayout(path_row)
+
+        self._image_preview = QLabel()
+        self._image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._image_preview.setMinimumHeight(100)
+        image_layout.addWidget(self._image_preview)
+
+        image_group.setLayout(image_layout)
+        layout.addWidget(image_group)
+
         # Activities
         activities_group = QGroupBox("Break Activities")
         activities_layout = QVBoxLayout()
@@ -258,6 +303,37 @@ class SettingsDialog(QDialog):
         volume = self._end_vol_slider.value() / 100.0
         play_test_sound("break_end.wav", volume)
 
+    def _browse_image(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Break Image", "",
+            "Images (*.png *.jpg *.jpeg *.gif *.bmp *.webp)"
+        )
+        if path:
+            self._image_path = path
+            self._update_image_preview()
+
+    def _clear_image(self):
+        self._image_path = ""
+        self._update_image_preview()
+
+    def _update_image_preview(self):
+        if self._image_path and os.path.isfile(self._image_path):
+            pixmap = QPixmap(self._image_path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(
+                    150, 100,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                self._image_preview.setPixmap(scaled)
+                name = os.path.basename(self._image_path)
+                self._image_path_label.setText(name)
+                self._image_path_label.setStyleSheet("")
+                return
+        self._image_preview.clear()
+        self._image_path_label.setText("No image selected")
+        self._image_path_label.setStyleSheet("color: gray; font-style: italic;")
+
     def _load_config(self):
         config = self._get_config()
         self._study_spin.setValue(config.get("study_duration_minutes", 25))
@@ -274,6 +350,9 @@ class SettingsDialog(QDialog):
             self._end_vol_label.setText(f"{end_vol}%")
 
         self._on_sound_toggle(self._sound_check.checkState())
+
+        self._image_path = config.get("break_image_path", "")
+        self._update_image_preview()
 
         self._activities_list.clear()
         for activity in config.get("break_activities", []):
@@ -308,6 +387,7 @@ class SettingsDialog(QDialog):
         if self._start_vol_slider:
             config["break_start_volume"] = self._start_vol_slider.value() / 100.0
             config["break_end_volume"] = self._end_vol_slider.value() / 100.0
+        config["break_image_path"] = self._image_path
         config["break_activities"] = [
             self._activities_list.item(i).text()
             for i in range(self._activities_list.count())
