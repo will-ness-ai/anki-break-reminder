@@ -59,4 +59,6 @@ Run Anki from terminal to see print() output. Hold Shift while starting Anki to 
 Create `.ankiaddon` zip (contents only, no parent folder). Delete `__pycache__` before zipping.
 
 ## Issue tracking
-Run `bd quickstart` at the start of every sesson to get context on how to use beads to do issue tracking while doing development work
+1. Run `bd quickstart` at the start of every sesson to get context on how to use beads to do issue tracking while doing development work
+2. As you find bugs, bad code, refactors that need to happen as you code, feel free to file them as beads.
+3. Whenever you complete a bead issue, present a menu to the user offering the user what issue (that is ready) they'd like to work on next, commit changes, or something else.
