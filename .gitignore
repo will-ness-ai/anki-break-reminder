@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+*.ankiaddon
+.venv/
+.pytest_cache/
